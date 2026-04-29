@@ -1,15 +1,11 @@
 {
-  "functions": {
-    "api/index.js": {
-      "runtime": "nodejs24.x",
-      "memory": 128,
-      "maxDuration": 60
-    }
+  "name": "relay",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
   },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/api/index.js"
-    }
-  ]
+  "scripts": {
+    "build": "echo build"
+  }
 }
