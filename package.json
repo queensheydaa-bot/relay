@@ -4,8 +4,5 @@
   "type": "module",
   "engines": {
     "node": "24.x"
-  },
-  "scripts": {
-    "build": "echo build"
   }
 }
