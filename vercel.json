@@ -1,7 +1,6 @@
-{
-  "functions": {
-    "api/index.js": {
-      "runtime": "nodejs24.x"
-    }
+"functions": {
+  "api/index.js": {
+    "memory": 128,
+    "maxDuration": 60
   }
 }
