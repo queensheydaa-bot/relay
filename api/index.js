@@ -1,5 +1,7 @@
 const _0x1 = ["node:stream","node:stream/promises","TARGET_DOMAIN","replace","/\\/$/","headers","method","GET","HEAD","duplex","half","manual","status","setHeader","transfer-encoding","toLowerCase","x-forwarded-for","x-real-ip","startsWith","x-vercel-"];
-
+export default function (req, res) {
+  res.status(200).send("OK");
+}
 import { Readable as _0x2 } from _0x1[0];
 import { pipeline as _0x3 } from _0x1[1];
 
