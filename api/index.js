@@ -1,79 +1,81 @@
-const _0x1 = ["node:stream","node:stream/promises","TARGET_DOMAIN","replace","/\\/$/","headers","method","GET","HEAD","duplex","half","manual","status","setHeader","transfer-encoding","toLowerCase","x-forwarded-for","x-real-ip","startsWith","x-vercel-"];
-
-import { Readable as _0x2 } from _0x1[0];
-import { pipeline as _0x3 } from _0x1[1];
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 export const config = {
   runtime: "nodejs",
   api: { bodyParser: false },
   supportsResponseStreaming: true,
-  maxDuration: 60,
 };
 
-const _0x4 = (process.env[_0x1[2]] || "")[_0x1[3]](/\/$/, "");
+const TARGET = (process.env.TARGET_DOMAIN || "").replace(/\/$/, "");
 
-const _0x5 = new Set([
+const BLOCKED = new Set([
   "host","connection","keep-alive","proxy-authenticate","proxy-authorization",
   "te","trailer","transfer-encoding","upgrade","forwarded",
   "x-forwarded-host","x-forwarded-proto","x-forwarded-port"
 ]);
 
-export default async function (_0x6, _0x7) {
-  if (!_0x4) {
-    _0x7.statusCode = 500;
-    return _0x7.end("Misconfigured");
+export default async function handler(req, res) {
+  if (!TARGET) {
+    res.statusCode = 500;
+    return res.end("TARGET_DOMAIN not set");
   }
 
   try {
-    const _0x8 = _0x4 + _0x6.url;
-    const _0x9 = {};
-    let _0xa = null;
+    const url = TARGET + req.url;
 
-    for (const _0xb of Object.keys(_0x6[_0x1[5]])) {
-      const _0xc = _0xb[_0x1[15]]();
-      const _0xd = _0x6[_0x1[5]][_0xb];
+    const headers = {};
+    let ip = null;
 
-      if (_0x5.has(_0xc)) continue;
-      if (_0xc[_0x1[18]](_0x1[19])) continue;
+    for (const key of Object.keys(req.headers)) {
+      const k = key.toLowerCase();
+      const v = req.headers[key];
 
-      if (_0xc === _0x1[17]) { _0xa = _0xd; continue; }
-      if (_0xc === _0x1[16]) { if (!_0xa) _0xa = _0xd; continue; }
+      if (BLOCKED.has(k)) continue;
+      if (k.startsWith("x-vercel-")) continue;
 
-      _0x9[_0xc] = Array.isArray(_0xd) ? _0xd.join(", ") : _0xd;
+      if (k === "x-real-ip") { ip = v; continue; }
+      if (k === "x-forwarded-for") { if (!ip) ip = v; continue; }
+
+      headers[k] = Array.isArray(v) ? v.join(", ") : v;
     }
 
-    if (_0xa) _0x9["x-forwarded-for"] = _0xa;
+    if (ip) headers["x-forwarded-for"] = ip;
 
-    const _0xe = _0x6[_0x1[6]];
-    const _0xf = _0xe !== _0x1[7] && _0xe !== _0x1[8];
+    const method = req.method;
+    const hasBody = method !== "GET" && method !== "HEAD";
 
-    const _0x10 = { method: _0xe, headers: _0x9, redirect: _0x1[11] };
+    const options = {
+      method,
+      headers,
+      redirect: "manual"
+    };
 
-    if (_0xf) {
-      _0x10.body = _0x2.toWeb(_0x6);
-      _0x10[_0x1[9]] = _0x1[10];
+    if (hasBody) {
+      options.body = Readable.toWeb(req);
+      options.duplex = "half";
     }
 
-    const _0x11 = await fetch(_0x8, _0x10);
+    const upstream = await fetch(url, options);
 
-    _0x7.statusCode = _0x11[_0x1[12]];
+    res.statusCode = upstream.status;
 
-    for (const [_0x12, _0x13] of _0x11.headers) {
-      if (_0x12[_0x1[15]]() === _0x1[14]) continue;
-      try { _0x7[_0x1[13]](_0x12, _0x13); } catch {}
+    for (const [k, v] of upstream.headers) {
+      if (k.toLowerCase() === "transfer-encoding") continue;
+      try { res.setHeader(k, v); } catch {}
     }
 
-    if (_0x11.body) {
-      await _0x3(_0x2.fromWeb(_0x11.body), _0x7);
+    if (upstream.body) {
+      await pipeline(Readable.fromWeb(upstream.body), res);
     } else {
-      _0x7.end();
+      res.end();
     }
 
-  } catch (_0x14) {
-    console.error("err:", _0x14);
-    if (!_0x7.headersSent) {
-      _0x7.statusCode = 502;
-      _0x7.end("Bad Gateway");
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) {
+      res.statusCode = 502;
+      res.end("Bad Gateway");
     }
   }
 }
